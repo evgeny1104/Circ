@@ -83,16 +83,16 @@
                 if (e.dataTransfer.files && e.dataTransfer.files[0]) onImageSelect(e.dataTransfer.files[0]);
             }, [onImageSelect]);
 
-            const baseClasses = "relative block w-full h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-600 flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors duration-300 ease-in-out";
-            const draggingClasses = "border-cyan-400 bg-gray-700/50";
-            const hoverClasses = "hover:border-cyan-500 hover:bg-gray-700/30";
+            const baseClasses = "relative block w-full h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors duration-300 ease-in-out";
+            const draggingClasses = "border-cyan-400 bg-cyan-50";
+            const hoverClasses = "hover:border-cyan-500 hover:bg-gray-50";
 
             return (
                 <label onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} className={`${baseClasses} ${isDragging ? draggingClasses : hoverClasses}`}>
                     <div className="space-y-2">
-                        <Icon icon="upload" className="w-12 h-12 mx-auto text-gray-500" />
-                        <p className="font-semibold text-gray-300">
-                            <span className="text-cyan-400">Нажмите для загрузки</span> или перетащите файл
+                        <Icon icon="upload" className="w-12 h-12 mx-auto text-gray-400" />
+                        <p className="font-semibold text-gray-700">
+                            <span className="text-cyan-500">Нажмите для загрузки</span> или перетащите файл
                         </p>
                         <p className="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
                     </div>
@@ -102,21 +102,83 @@
         };
 
         // --- Controls Component ---
-        const Controls = ({ borderRadius, maxRadius, onRadiusChange, onDownload, onReset }) => {
+        const Controls = ({ borderRadius, maxRadius, onRadiusChange, onDownload, onReset, outputFormat, onOutputFormatChange, jpegQuality, onJpegQualityChange }) => {
+            const handleRadiusInputChange = (e) => {
+                const value = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
+                if (!isNaN(value)) {
+                    onRadiusChange(Math.max(0, Math.min(maxRadius, value)));
+                }
+            };
+            
             return (
-                <div className="space-y-8">
+                <div className="space-y-6">
+                    {/* Radius Controls */}
                     <div>
-                        <label htmlFor="radius-slider" className="block text-sm font-medium text-gray-300 mb-2">
-                            Радиус скругления: <span className="font-bold text-cyan-400">{borderRadius}px</span>
-                        </label>
-                        <input id="radius-slider" type="range" min="0" max={maxRadius} value={borderRadius} onChange={(e) => onRadiusChange(parseInt(e.target.value, 10))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:active:scale-110" />
+                        <div className="flex justify-between items-center">
+                            <label htmlFor="radius-input" className="block text-sm font-medium text-gray-700">
+                                Радиус скругления
+                            </label>
+                            <div className="flex items-center">
+                                <input
+                                    id="radius-input"
+                                    type="number"
+                                    min="0"
+                                    max={maxRadius}
+                                    value={borderRadius}
+                                    onChange={handleRadiusInputChange}
+                                    className="w-20 rounded-md border-gray-300 text-gray-900 shadow-sm text-center focus:border-cyan-500 focus:ring-cyan-500 sm:text-sm"
+                                />
+                                <span className="ml-2 text-gray-500">px</span>
+                            </div>
+                        </div>
+                        <input
+                            id="radius-slider"
+                            type="range"
+                            min="0"
+                            max={maxRadius}
+                            value={borderRadius}
+                            onChange={(e) => onRadiusChange(parseInt(e.target.value, 10))}
+                            className="mt-2 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:active:scale-110"
+                        />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button onClick={onDownload} className="w-full flex items-center justify-center px-4 py-3 bg-cyan-500 text-white font-bold rounded-lg shadow-md hover:bg-cyan-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500">
+
+                    {/* Output Format Controls */}
+                    <div className="space-y-2">
+                       <label className="block text-sm font-medium text-gray-700">Формат файла</label>
+                       <div className="flex items-center space-x-4 rounded-lg bg-gray-100 p-1">
+                          <button onClick={() => onOutputFormatChange('jpeg')} className={`w-full rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${outputFormat === 'jpeg' ? 'bg-white text-cyan-600 shadow-sm' : 'text-gray-600 hover:bg-white/60'}`}>JPEG</button>
+                          <button onClick={() => onOutputFormatChange('png')} className={`w-full rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${outputFormat === 'png' ? 'bg-white text-cyan-600 shadow-sm' : 'text-gray-600 hover:bg-white/60'}`}>PNG</button>
+                       </div>
+                    </div>
+                    
+                    {/* JPEG Quality Controls (conditional) */}
+                    {outputFormat === 'jpeg' && (
+                      <div>
+                          <div className="flex justify-between items-center">
+                              <label htmlFor="quality-slider" className="text-sm font-medium text-gray-700">
+                                  Качество JPEG
+                              </label>
+                              <span className="font-bold text-cyan-500">{jpegQuality}%</span>
+                          </div>
+                          <input 
+                              id="quality-slider" 
+                              type="range" 
+                              min="1" 
+                              max="100" 
+                              value={jpegQuality}
+                              onChange={(e) => onJpegQualityChange(parseInt(e.target.value, 10))}
+                              className="mt-2 w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-cyan-500 [&::-webkit-slider-thumb]:rounded-full"
+                          />
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-200">
+                        <button onClick={onDownload} className="w-full flex items-center justify-center px-4 py-3 bg-cyan-500 text-white font-bold rounded-lg shadow-md hover:bg-cyan-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-cyan-500">
                             <Icon icon="download" className="w-5 h-5 mr-2" />
                             Скачать
                         </button>
-                        <button onClick={onReset} className="w-full flex items-center justify-center px-4 py-3 bg-gray-600 text-white font-bold rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500">
+                        <button onClick={onReset} className="w-full flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-800 font-semibold rounded-lg shadow-md hover:bg-gray-300 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-white focus:ring-gray-400">
                             <Icon icon="reset" className="w-5 h-5 mr-2" />
                             Сбросить
                         </button>
@@ -144,8 +206,21 @@
                 const image = new Image();
                 const objectUrl = URL.createObjectURL(imageFile);
                 image.src = objectUrl;
+
                 image.onload = () => {
-                    const { width, height } = image;
+                    const MAX_DIMENSION = 2048;
+                    let { width, height } = image;
+
+                    if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                        if (width > height) {
+                            height = Math.round(height * (MAX_DIMENSION / width));
+                            width = MAX_DIMENSION;
+                        } else {
+                            width = Math.round(width * (MAX_DIMENSION / height));
+                            height = MAX_DIMENSION;
+                        }
+                    }
+                    
                     canvas.width = width;
                     canvas.height = height;
 
@@ -180,9 +255,9 @@
             return (
                 <React.Fragment>
                     <canvas ref={canvasRef} style={{ display: 'none' }} />
-                    {imageUrl && (
+                    {imageUrl ? (
                         <img src={imageUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
-                    )}
+                    ) : null}
                 </React.Fragment>
             );
         });
@@ -192,7 +267,10 @@
             const [imageFile, setImageFile] = useState(null);
             const [borderRadius, setBorderRadius] = useState(50);
             const [originalFileName, setOriginalFileName] = useState('image.png');
+            const [outputFormat, setOutputFormat] = useState('jpeg');
+            const [jpegQuality, setJpegQuality] = useState(92);
             const canvasPreviewRef = useRef(null);
+            const maxRadius = 500;
 
             const handleImageSelect = (file) => {
                 setImageFile(file);
@@ -202,61 +280,75 @@
             const handleReset = useCallback(() => {
                 setImageFile(null);
                 setBorderRadius(50);
+                setOutputFormat('jpeg');
+                setJpegQuality(92);
             }, []);
 
             const handleDownload = useCallback(() => {
                 const canvas = canvasPreviewRef.current?.getCanvas();
                 if (canvas && imageFile) {
+                    const mimeType = outputFormat === 'png' ? 'image/png' : 'image/jpeg';
+                    const quality = outputFormat === 'jpeg' ? jpegQuality / 100 : undefined;
+                    const extension = outputFormat;
+                    
                     const link = document.createElement('a');
                     const fileNameParts = originalFileName.split('.');
-                    const name = fileNameParts.slice(0, -1).join('.');
-                    link.download = `${name}-rounded.png`;
-                    link.href = canvas.toDataURL('image/png');
+                    const name = fileNameParts.slice(0, -1).join('.') || 'image';
+                    link.download = `${name}-rounded.${extension}`;
+                    link.href = canvas.toDataURL(mimeType, quality);
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                 }
-            }, [originalFileName, imageFile]);
+            }, [originalFileName, imageFile, outputFormat, jpegQuality]);
 
             return (
-                <div className="bg-gray-900 text-gray-200 flex items-center justify-center p-4 font-sans">
-                    <div className="w-full max-w-4xl mx-auto">
-                        <header className="text-center mb-8">
-                            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Скругление углов изображения</h1>
-                            <p className="text-lg text-gray-400 mt-2">Загрузите изображение, настройте радиус и скачайте результат.</p>
-                        </header>
-                        <main className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-8 border border-gray-700">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <div className="flex flex-col space-y-6">
-                                    <h2 className="text-2xl font-semibold text-white flex items-center">
-                                        <Icon icon="settings" className="w-6 h-6 mr-3 text-cyan-400" />
-                                        Настройки
-                                    </h2>
-                                    {imageFile ? (
-                                        <Controls borderRadius={borderRadius} onRadiusChange={setBorderRadius} onDownload={handleDownload} onReset={handleReset} maxRadius={500} />
-                                    ) : (
-                                        <ImageUploader onImageSelect={handleImageSelect} />
-                                    )}
-                                </div>
-                                <div className="flex flex-col">
-                                    <h2 className="text-2xl font-semibold text-white flex items-center mb-6">
-                                        <Icon icon="preview" className="w-6 h-6 mr-3 text-cyan-400" />
-                                        Предпросмотр
-                                    </h2>
-                                    <div className="w-full aspect-square bg-gray-900/50 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-700 overflow-hidden">
-                                        {imageFile ? (
-                                            <CanvasPreview ref={canvasPreviewRef} imageFile={imageFile} borderRadius={borderRadius} />
-                                        ) : (
-                                            <div className="text-center text-gray-500">
-                                                <Icon icon="placeholder" className="w-16 h-16 mx-auto mb-4" />
-                                                <p>Здесь появится ваше изображение</p>
-                                            </div>
-                                        )}
+                <div className="bg-white text-gray-900 font-sans rounded-2xl shadow-xl border border-gray-200 max-w-4xl mx-auto my-4">
+                  <div className="p-6 md:p-8">
+                    <header className="text-center mb-8">
+                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">Скругление углов</h1>
+                        <p className="text-lg text-gray-600 mt-2">Загрузите изображение, настройте радиус и скачайте результат.</p>
+                    </header>
+                    <main className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="flex flex-col space-y-6">
+                            <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
+                                <Icon icon="settings" className="w-6 h-6 mr-3 text-cyan-500" />
+                                Настройки
+                            </h2>
+                            {imageFile ? (
+                                <Controls 
+                                    borderRadius={borderRadius} 
+                                    onRadiusChange={setBorderRadius} 
+                                    onDownload={handleDownload} 
+                                    onReset={handleReset} 
+                                    maxRadius={maxRadius}
+                                    outputFormat={outputFormat}
+                                    onOutputFormatChange={setOutputFormat}
+                                    jpegQuality={jpegQuality}
+                                    onJpegQualityChange={setJpegQuality}
+                                />
+                            ) : (
+                                <ImageUploader onImageSelect={handleImageSelect} />
+                            )}
+                        </div>
+                        <div className="flex flex-col">
+                            <h2 className="text-2xl font-semibold text-gray-800 flex items-center mb-6">
+                                <Icon icon="preview" className="w-6 h-6 mr-3 text-cyan-500" />
+                                Предпросмотр
+                            </h2>
+                            <div className="w-full aspect-square bg-gray-50 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 overflow-hidden">
+                                {imageFile ? (
+                                    <CanvasPreview ref={canvasPreviewRef} imageFile={imageFile} borderRadius={borderRadius} />
+                                ) : (
+                                    <div className="text-center text-gray-500">
+                                        <Icon icon="placeholder" className="w-16 h-16 mx-auto mb-4" />
+                                        <p>Здесь появится ваше изображение</p>
                                     </div>
-                                </div>
+                                )}
                             </div>
-                        </main>
-                    </div>
+                        </div>
+                    </main>
+                  </div>
                 </div>
             );
         };

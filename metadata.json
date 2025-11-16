@@ -1,0 +1,5 @@
+{
+  "name": "Image Corner Rounder",
+  "description": "A free web application widget that allows users to round the corners of an image. Upload an image, adjust the corner radius with a slider, and download the perfectly rounded result.",
+  "requestFramePermissions": []
+}

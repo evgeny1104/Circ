@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Corner Rounder Widget</title>
+  <!-- 1. Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 2. React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- 3. Babel Standalone for JSX compilation in browser -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    /* Minor custom styles */
+    body {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-color: transparent;
+      /* Make body transparent for embedding */
+    }
+  </style>
+</head>
+
+<body>
+  <div id="image-rounder-widget-root"></div>
+
+  <script type="text/babel">
+    // Helper to avoid conflicts with other scripts on the page
+      (function() {
+        const { useState, useRef, useCallback, useEffect, forwardRef, useImperativeHandle } = React;
+
+        // --- Icon Component ---
+        const Icon = ({ icon, className = 'w-6 h-6' }) => {
+            const icons = {
+                upload: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l-3.75 3.75M12 9.75l3.75 3.75M3 17.25V21h18v-3.75M4.5 12.75l7.5-7.5 7.5 7.5" />
+                    </svg>
+                ),
+                download: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                    </svg>
+                ),
+                reset: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l4.992-4.993m-4.993 0l-3.181 3.183a8.25 8.25 0 000 11.664l3.181 3.183" />
+                    </svg>
+                ),
+                settings: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75" />
+                    </svg>
+                ),
+                preview: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639l4.418-5.58a1.012 1.012 0 011.272 0l4.418 5.58a1.012 1.012 0 010 .639l-4.418 5.58a1.012 1.012 0 01-1.272 0l-4.418-5.58z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                ),
+                placeholder: (
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.158 0a.079.079 0 01.079.079v.008a.079.079 0 01-.079.079h-.008a.079.079 0 01-.079-.079v-.008c0-.044.036-.079.079-.079h.008z" />
+                    </svg>
+                )
+            };
+            return icons[icon] || null;
+        };
+
+        // --- ImageUploader Component ---
+        const ImageUploader = ({ onImageSelect }) => {
+            const [isDragging, setIsDragging] = useState(false);
+            const handleFileChange = (e) => {
+                if (e.target.files && e.target.files[0]) onImageSelect(e.target.files[0]);
+            };
+            const handleDragEnter = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }, []);
+            const handleDragLeave = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(false); }, []);
+            const handleDragOver = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); }, []);
+            const handleDrop = useCallback((e) => {
+                e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) onImageSelect(e.dataTransfer.files[0]);
+            }, [onImageSelect]);
+
+            const baseClasses = "relative block w-full h-full min-h-[200px] rounded-xl border-2 border-dashed border-gray-600 flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-colors duration-300 ease-in-out";
+            const draggingClasses = "border-cyan-400 bg-gray-700/50";
+            const hoverClasses = "hover:border-cyan-500 hover:bg-gray-700/30";
+
+            return (
+                <label onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop} className={`${baseClasses} ${isDragging ? draggingClasses : hoverClasses}`}>
+                    <div className="space-y-2">
+                        <Icon icon="upload" className="w-12 h-12 mx-auto text-gray-500" />
+                        <p className="font-semibold text-gray-300">
+                            <span className="text-cyan-400">Нажмите для загрузки</span> или перетащите файл
+                        </p>
+                        <p className="text-xs text-gray-500">PNG, JPG, GIF до 10MB</p>
+                    </div>
+                    <input type="file" className="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept="image/png, image/jpeg, image/gif" onChange={handleFileChange} />
+                </label>
+            );
+        };
+
+        // --- Controls Component ---
+        const Controls = ({ borderRadius, maxRadius, onRadiusChange, onDownload, onReset }) => {
+            return (
+                <div className="space-y-8">
+                    <div>
+                        <label htmlFor="radius-slider" className="block text-sm font-medium text-gray-300 mb-2">
+                            Радиус скругления: <span className="font-bold text-cyan-400">{borderRadius}px</span>
+                        </label>
+                        <input id="radius-slider" type="range" min="0" max={maxRadius} value={borderRadius} onChange={(e) => onRadiusChange(parseInt(e.target.value, 10))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:transition-transform [&::-webkit-slider-thumb]:active:scale-110" />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button onClick={onDownload} className="w-full flex items-center justify-center px-4 py-3 bg-cyan-500 text-white font-bold rounded-lg shadow-md hover:bg-cyan-600 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500">
+                            <Icon icon="download" className="w-5 h-5 mr-2" />
+                            Скачать
+                        </button>
+                        <button onClick={onReset} className="w-full flex items-center justify-center px-4 py-3 bg-gray-600 text-white font-bold rounded-lg shadow-md hover:bg-gray-700 transition-all duration-200 transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-gray-500">
+                            <Icon icon="reset" className="w-5 h-5 mr-2" />
+                            Сбросить
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+        
+        // --- CanvasPreview Component ---
+        const CanvasPreview = forwardRef(({ imageFile, borderRadius }, ref) => {
+            const canvasRef = useRef(null);
+            const [imageUrl, setImageUrl] = useState('');
+
+            useImperativeHandle(ref, () => ({
+                getCanvas: () => canvasRef.current,
+            }));
+
+            useEffect(() => {
+                if (!imageFile || !canvasRef.current) return;
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) return;
+
+                const image = new Image();
+                const objectUrl = URL.createObjectURL(imageFile);
+                image.src = objectUrl;
+                image.onload = () => {
+                    const { width, height } = image;
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    let radius = Math.max(0, borderRadius);
+                    if (radius > width / 2) radius = width / 2;
+                    if (radius > height / 2) radius = height / 2;
+
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.beginPath();
+                    ctx.moveTo(radius, 0);
+                    ctx.lineTo(width - radius, 0);
+                    ctx.arcTo(width, 0, width, radius, radius);
+                    ctx.lineTo(width, height - radius);
+                    ctx.arcTo(width, height, width - radius, height, radius);
+                    ctx.lineTo(radius, height);
+                    ctx.arcTo(0, height, 0, height - radius, radius);
+                    ctx.lineTo(0, radius);
+                    ctx.arcTo(0, 0, radius, 0, radius);
+                    ctx.closePath();
+                    
+                    ctx.clip();
+                    ctx.drawImage(image, 0, 0, width, height);
+
+                    setImageUrl(canvas.toDataURL('image/png'));
+                };
+                
+                return () => {
+                    URL.revokeObjectURL(objectUrl);
+                };
+            }, [imageFile, borderRadius]);
+
+            return (
+                <React.Fragment>
+                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    {imageUrl && (
+                        <img src={imageUrl} alt="Preview" className="max-w-full max-h-full object-contain" />
+                    )}
+                </React.Fragment>
+            );
+        });
+
+        // --- Main App Component ---
+        const App = () => {
+            const [imageFile, setImageFile] = useState(null);
+            const [borderRadius, setBorderRadius] = useState(50);
+            const [originalFileName, setOriginalFileName] = useState('image.png');
+            const canvasPreviewRef = useRef(null);
+
+            const handleImageSelect = (file) => {
+                setImageFile(file);
+                setOriginalFileName(file.name);
+            };
+
+            const handleReset = useCallback(() => {
+                setImageFile(null);
+                setBorderRadius(50);
+            }, []);
+
+            const handleDownload = useCallback(() => {
+                const canvas = canvasPreviewRef.current?.getCanvas();
+                if (canvas && imageFile) {
+                    const link = document.createElement('a');
+                    const fileNameParts = originalFileName.split('.');
+                    const name = fileNameParts.slice(0, -1).join('.');
+                    link.download = `${name}-rounded.png`;
+                    link.href = canvas.toDataURL('image/png');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            }, [originalFileName, imageFile]);
+
+            return (
+                <div className="bg-gray-900 text-gray-200 flex items-center justify-center p-4 font-sans">
+                    <div className="w-full max-w-4xl mx-auto">
+                        <header className="text-center mb-8">
+                            <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Скругление углов изображения</h1>
+                            <p className="text-lg text-gray-400 mt-2">Загрузите изображение, настройте радиус и скачайте результат.</p>
+                        </header>
+                        <main className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-8 border border-gray-700">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <div className="flex flex-col space-y-6">
+                                    <h2 className="text-2xl font-semibold text-white flex items-center">
+                                        <Icon icon="settings" className="w-6 h-6 mr-3 text-cyan-400" />
+                                        Настройки
+                                    </h2>
+                                    {imageFile ? (
+                                        <Controls borderRadius={borderRadius} onRadiusChange={setBorderRadius} onDownload={handleDownload} onReset={handleReset} maxRadius={500} />
+                                    ) : (
+                                        <ImageUploader onImageSelect={handleImageSelect} />
+                                    )}
+                                </div>
+                                <div className="flex flex-col">
+                                    <h2 className="text-2xl font-semibold text-white flex items-center mb-6">
+                                        <Icon icon="preview" className="w-6 h-6 mr-3 text-cyan-400" />
+                                        Предпросмотр
+                                    </h2>
+                                    <div className="w-full aspect-square bg-gray-900/50 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-700 overflow-hidden">
+                                        {imageFile ? (
+                                            <CanvasPreview ref={canvasPreviewRef} imageFile={imageFile} borderRadius={borderRadius} />
+                                        ) : (
+                                            <div className="text-center text-gray-500">
+                                                <Icon icon="placeholder" className="w-16 h-16 mx-auto mb-4" />
+                                                <p>Здесь появится ваше изображение</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Render the App ---
+        const rootElement = document.getElementById('image-rounder-widget-root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+
+      })();
+    </script>
+</body>
+
+</html>
